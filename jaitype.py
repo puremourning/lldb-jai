@@ -21,6 +21,10 @@ def Array( valobj: lldb.SBValue, internal_dict, options ):
 
 def ResizableArray( valobj: lldb.SBValue, internal_dict, options ):
   raw: lldb.SBValue = valobj.GetNonSyntheticValue()
+  data = raw.GetChildMemberWithName( 'data' ).GetValueAsSigned()
+  if data == 0:
+    return ( "Array(uninitialised)" )
+
   return ( "Array(count="
            + str( raw.GetChildMemberWithName( 'count' ).GetValueAsSigned() )
            + ",allocated="
