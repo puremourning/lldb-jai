@@ -9,6 +9,24 @@ def String( valobj: lldb.SBValue, internal_dict, options ):
   len = valobj.GetChildMemberWithName('count').GetValueAsSigned(0)
   return bytes( data.GetPointeeData(0, len).uint8s ).decode( 'utf-8' )
 
+# Annoyingly summary strings suppress the printing of the child members by
+# default. This is crappy, and means we have to write that code ourselves, but
+# it's not even that trivial as just printing the "GetValue()" of each child
+# prints "None", helpfully.
+def Array( valobj: lldb.SBValue, internal_dict, options ):
+  raw: lldb.SBValue = valobj.GetNonSyntheticValue()
+  return ( "Array(count="
+           + str( raw.GetChildMemberWithName( 'count' ).GetValueAsSigned() )
+           + ")" )
+
+def ResizableArray( valobj: lldb.SBValue, internal_dict, options ):
+  raw: lldb.SBValue = valobj.GetNonSyntheticValue()
+  return ( "Array(count="
+           + str( raw.GetChildMemberWithName( 'count' ).GetValueAsSigned() )
+           + ",allocated="
+           + str( raw.GetChildMemberWithName( 'allocated' ).GetValueAsSigned() )
+           + ")" )
+
 class ArrayChildrenProvider:
   def __init__( self, valobj: lldb.SBValue, internal_dict) :
     self.val = valobj
@@ -40,14 +58,16 @@ def __lldb_init_module( debugger: lldb.SBDebugger, dict ):
   if DEBUG:
     debugpy.listen( 5432 )
     debugpy.wait_for_client()
-
-  # string
   debugger.HandleCommand( 'type summary add -F jaitype.String string' )
 
   # Fixed-size array
   debugger.HandleCommand(
+    r'type summary add -F jaitype.Array -x "\[\] .*"' )
+  debugger.HandleCommand(
     r'type synthetic add -x "\[\] .*" -l jaitype.ArrayChildrenProvider' )
 
   # Variable size array
+  debugger.HandleCommand(
+    r'type summary add -F jaitype.ResizableArray -x "\[\.\.\] .*"' )
   debugger.HandleCommand(
     r'type synthetic add -x "\[\.\.\] .*" -l jaitype.ArrayChildrenProvider' )
