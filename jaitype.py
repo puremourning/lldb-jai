@@ -58,16 +58,30 @@ def __lldb_init_module( debugger: lldb.SBDebugger, dict ):
   if DEBUG:
     debugpy.listen( 5432 )
     debugpy.wait_for_client()
-  debugger.HandleCommand( 'type summary add -F jaitype.String string' )
 
-  # Fixed-size array
-  debugger.HandleCommand(
-    r'type summary add -F jaitype.Array -x "\[\] .*"' )
-  debugger.HandleCommand(
-    r'type synthetic add -x "\[\] .*" -l jaitype.ArrayChildrenProvider' )
+  cat: lldb.SBTypeCategory = debugger.CreateCategory("Jai")
 
-  # Variable size array
-  debugger.HandleCommand(
-    r'type summary add -F jaitype.ResizableArray -x "\[\.\.\] .*"' )
-  debugger.HandleCommand(
-    r'type synthetic add -x "\[\.\.\] .*" -l jaitype.ArrayChildrenProvider' )
+  string = lldb.SBTypeNameSpecifier( "string" )
+  cat.AddTypeSummary( string,
+                      lldb.SBTypeSummary.CreateWithFunctionName(
+                        'jaitype.String' ) )
+
+  array = lldb.SBTypeNameSpecifier( r'\[\] .*', True )
+  cat.AddTypeSummary(
+    array,
+    lldb.SBTypeSummary.CreateWithFunctionName( 'jaitype.Array' ) )
+  cat.AddTypeSynthetic(
+    array,
+    lldb.SBTypeSynthetic.CreateWithClassName(
+      'jaitype.ArrayChildrenProvider' ) )
+
+  rarray = lldb.SBTypeNameSpecifier( r'\[\.\.\] .*', True )
+  cat.AddTypeSummary(
+    rarray,
+    lldb.SBTypeSummary.CreateWithFunctionName( 'jaitype.ResizableArray' ) )
+  cat.AddTypeSynthetic(
+    rarray,
+    lldb.SBTypeSynthetic.CreateWithClassName(
+      'jaitype.ArrayChildrenProvider' ) )
+
+  cat.SetEnabled(True)
