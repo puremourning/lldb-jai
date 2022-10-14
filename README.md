@@ -38,22 +38,29 @@ You can see the underlying structure still, of course:
 }
 ```
 
-## Printing array elements (`$T[]` and `$T[..]`)
+## Printing arrays (`$T[]` and `$T[..]`)
 
-The default summary is used, which prints small arrays in one:
+A summary is shown `Array(count=N)`, along with the members, also appropriately
+summarised:
 
 ```
-(lldb) var counters
-([] s64) counters = (0 = 1, 1 = 2, 2 = 3)
+(lldb) var command
+([] string) command = Array(count=3) {
+  0 = A
+  1 = B
+  2 = /home/vagrant/Development/jai/tests/array_of
+}
 ```
 
 Works for `[] string` and `[..]string`
 
 ```
-(lldb) var command
-([] string) command = (0 = A, 1 = B, 2 = /home/vagrant/Development/jai/tests/array_of)
 (lldb) var resizable
-([..] string) resizable = (0 = A, 1 = B, 2 = /home/vagrant/Development/jai/tests/array_of)
+([..] string) resizable = Array(count=3,allocated=8) {
+  0 = A
+  1 = B
+  2 = /home/vagrant/Development/jai/tests/array_of
+}
 ```
 
 You can print individual elements too, with usual validation:

@@ -1,4 +1,5 @@
 DEBUG = 0
+USE_CMDS = 1
 
 import lldb
 if DEBUG:
@@ -63,29 +64,56 @@ def __lldb_init_module( debugger: lldb.SBDebugger, dict ):
     debugpy.listen( 5432 )
     debugpy.wait_for_client()
 
-  cat: lldb.SBTypeCategory = debugger.CreateCategory("Jai")
+  if USE_CMDS:
+    C = debugger.HandleCommand
+    C( "type summary add -w Jai string -F jaitype.String" )
+    C( r"type summary add -e -w Jai -x '\[\] .*' -F jaitype.Array" )
+    C( r"type summary add -e -w Jai -x '\[\.\.\] .*' -F jaitype.ResizableArray" )
+    C( r"type synthetic add -w Jai -x '\[\] .*' -l jaitype.ArrayChildrenProvider" )
+    C( r"type synthetic add -w Jai -x '\[\.\.\] .*' -l jaitype.ArrayChildrenProvider" )
+    C( 'type category enable Jai' )
+  else:
+    # I can't work out how to specify the equivalent of "-e" here (or stricly
+    # the opposite, as the default appears to be to show all chilren, and
+    # _don't_ want to for string)
+    # There seem to be conflicting and overlapping flags in the lldb code:
+    #  eTypeOptionShowOneLiner, eTypeOptionHideChildren, etc.
+    # These all set flags on the various formatters (it's get/set methods all
+    # the way down), but i can't see them exposed in python. There's an options
+    # field on SBTypeSummary.CreateWithFunctionName, but i couldn't find a way
+    # to make it work)
+    #
+    # Anyway it works with the command line, which sets the defaults like this:
+    #
+    # m_flags.Clear().SetCascades().SetDontShowChildren().SetDontShowValue(false);
+    # m_flags.SetShowMembersOneLiner(false)
+    #     .SetSkipPointers(false)
+    #     .SetSkipReferences(false)
+    #     .SetHideItemNames(false);
 
-  string = lldb.SBTypeNameSpecifier( "string" )
-  cat.AddTypeSummary( string,
-                      lldb.SBTypeSummary.CreateWithFunctionName(
-                        'jaitype.String' ) )
+    cat: lldb.SBTypeCategory = debugger.CreateCategory("Jai")
 
-  array = lldb.SBTypeNameSpecifier( r'\[\] .*', True )
-  cat.AddTypeSummary(
-    array,
-    lldb.SBTypeSummary.CreateWithFunctionName( 'jaitype.Array' ) )
-  cat.AddTypeSynthetic(
-    array,
-    lldb.SBTypeSynthetic.CreateWithClassName(
-      'jaitype.ArrayChildrenProvider' ) )
+    string = lldb.SBTypeNameSpecifier( "string" )
+    cat.AddTypeSummary( string,
+                        lldb.SBTypeSummary.CreateWithFunctionName(
+                          'jaitype.String', ) )
 
-  rarray = lldb.SBTypeNameSpecifier( r'\[\.\.\] .*', True )
-  cat.AddTypeSummary(
-    rarray,
-    lldb.SBTypeSummary.CreateWithFunctionName( 'jaitype.ResizableArray' ) )
-  cat.AddTypeSynthetic(
-    rarray,
-    lldb.SBTypeSynthetic.CreateWithClassName(
-      'jaitype.ArrayChildrenProvider' ) )
+    array = lldb.SBTypeNameSpecifier( r'\[\] .*', True )
+    cat.AddTypeSummary(
+      array,
+      lldb.SBTypeSummary.CreateWithFunctionName( 'jaitype.Array' ) )
+    cat.AddTypeSynthetic(
+      array,
+      lldb.SBTypeSynthetic.CreateWithClassName(
+        'jaitype.ArrayChildrenProvider' ) )
 
-  cat.SetEnabled(True)
+    rarray = lldb.SBTypeNameSpecifier( r'\[\.\.\] .*', True )
+    cat.AddTypeSummary(
+      rarray,
+      lldb.SBTypeSummary.CreateWithFunctionName( 'jaitype.ResizableArray' ) )
+    cat.AddTypeSynthetic(
+      rarray,
+      lldb.SBTypeSynthetic.CreateWithClassName(
+        'jaitype.ArrayChildrenProvider' ) )
+
+    cat.SetEnabled(True)
