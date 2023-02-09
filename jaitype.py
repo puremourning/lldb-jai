@@ -8,7 +8,10 @@ if DEBUG:
 def String( valobj: lldb.SBValue, internal_dict, options ):
   data: lldb.SBValue = valobj.GetChildMemberWithName('data')
   len = valobj.GetChildMemberWithName('count').GetValueAsSigned(0)
-  return bytes( data.GetPointeeData(0, len).uint8s ).decode( 'utf-8' )
+  # HACK: Assume it's utf-8.... I wonder if options contains an encoding option?
+  return ( '"'
+           + bytes( data.GetPointeeData(0, len).uint8s ).decode( 'utf-8' )
+           + '"' )
 
 # Annoyingly summary strings suppress the printing of the child members by
 # default. This is crappy, and means we have to write that code ourselves, but
