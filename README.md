@@ -16,6 +16,35 @@ command script import /path/to/jai/jaitype.py
 Note for Xcode, you might need `.lldbinit-Xcode` or one of many
 [other confusing options](https://lldb.llvm.org/man/lldb.html#configuration-files).
 
+# Using with Vimspector
+
+Here's an example `.vimspector.json` that you can copy/paste (modify the
+`initCommands` to specify the correct path):
+
+```json
+{
+  "$schema": "https://puremourning.github.io/vimspector/schema/vimspector.schema.json",
+  "configurations": {
+    "Launch": {
+      "adapter": "CodeLLDB",
+      "variables": {
+        "buildme": {
+          "shell": "jai main.jai"
+        }
+      },
+      "configuration": {
+        "request": "launch",
+        "program": "${workspaceRoot}/simple_jai_test",
+        "expressions": "native",
+        "initCommands": [
+          "command script import $HOME/Development/jai/lldb-jai/jaitype.py"
+        ]
+      }
+    }
+  }
+}
+```
+
 # Supported types
 
 ## Summary for `string` values
