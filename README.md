@@ -67,6 +67,9 @@ You can see the underlying structure still, of course:
 }
 ```
 
+NOTE: Only the first 1024 characters are ever returned. This is to avoid lldb
+spending decades parsing data in python.
+
 ## Printing arrays (`$T[]` and `$T[..]`)
 
 A summary is shown `Array(count=N)`, along with the members, also appropriately

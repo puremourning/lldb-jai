@@ -1,24 +1,32 @@
 DEBUG = 0
 USE_CMDS = 1
 
+MAX_STRING_LEN = 1024
+
 import lldb
 if DEBUG:
   import debugpy
 
+
 def String( valobj: lldb.SBValue, internal_dict, options ):
-  data: lldb.SBValue = valobj.GetChildMemberWithName('data')
-  len = valobj.GetChildMemberWithName('count').GetValueAsSigned(0)
+  data: lldb.SBValue = valobj.GetChildMemberWithName( 'data' )
+  len = valobj.GetChildMemberWithName( 'count' ).GetValueAsSigned( 0 )
   if len == 0:
     return ""
   if len < 0:
-    return "invalid length (" + str(len) + ")"
+    return "invalid length (" + str( len ) + ")"
   if len > 0xFFFFFFFF:
-    return "length is too big for LLDB's puny python bridge (" + str(len) + ")"
+    return "length is too big for LLDB's puny python bridge (" + str( len ) + ")"
+
+  # FIXME: This might actually chomp the middle of a unicode character, so we
+  # should do a fixup for that (scan backwards for the previous non-continuation
+  # byte
+  len_to_decode = min( len, MAX_STRING_LEN )
   # HACK: Assume it's utf-8.... I wonder if options contains an encoding option?
   return ( '"'
-           + bytes( data.GetPointeeData(0, len).uint8s ).decode( 'utf-8' )
+           + bytes( data.GetPointeeData( 0, len_to_decode ).uint8s ).decode( 'utf-8' )
            + '"' )
-   
+
 
 # Annoyingly summary strings suppress the printing of the child members by
 # default. This is crappy, and means we have to write that code ourselves, but
@@ -29,6 +37,7 @@ def Array( valobj: lldb.SBValue, internal_dict, options ):
   return ( "Array(count="
            + str( raw.GetChildMemberWithName( 'count' ).GetValueAsSigned() )
            + ")" )
+
 
 def ResizableArray( valobj: lldb.SBValue, internal_dict, options ):
   raw: lldb.SBValue = valobj.GetNonSyntheticValue()
@@ -42,30 +51,31 @@ def ResizableArray( valobj: lldb.SBValue, internal_dict, options ):
            + str( raw.GetChildMemberWithName( 'allocated' ).GetValueAsSigned() )
            + ")" )
 
+
 class ArrayChildrenProvider:
-  def __init__( self, valobj: lldb.SBValue, internal_dict) :
+  def __init__( self, valobj: lldb.SBValue, internal_dict ) :
     self.val = valobj
 
-  def update(self):
+  def update( self ):
     self.count = self.val.GetChildMemberWithName( 'count' ).GetValueAsSigned()
-    self.data: lldb.SBValue = self.val.GetChildMemberWithName('data')
+    self.data: lldb.SBValue = self.val.GetChildMemberWithName( 'data' )
     self.data_type: lldb.SBType = self.data.GetType().GetPointeeType()
     self.data_size = self.data_type.GetByteSize()
 
     return False
 
-  def has_children(self):
+  def has_children( self ):
     return True
 
-  def num_children(self):
+  def num_children( self ):
     return self.count
 
-  def get_child_at_index(self, index):
-    return self.data.CreateChildAtOffset( str(index),
+  def get_child_at_index( self, index ):
+    return self.data.CreateChildAtOffset( str( index ),
                                           self.data_size * index,
                                           self.data_type )
 
-  def get_child_index(self, name):
+  def get_child_index( self, name ):
     return int( name )
 
 
@@ -101,7 +111,7 @@ def __lldb_init_module( debugger: lldb.SBDebugger, dict ):
     #     .SetSkipReferences(false)
     #     .SetHideItemNames(false);
 
-    cat: lldb.SBTypeCategory = debugger.CreateCategory("Jai")
+    cat: lldb.SBTypeCategory = debugger.CreateCategory( "Jai" )
 
     string = lldb.SBTypeNameSpecifier( "string" )
     cat.AddTypeSummary( string,
@@ -126,4 +136,4 @@ def __lldb_init_module( debugger: lldb.SBDebugger, dict ):
       lldb.SBTypeSynthetic.CreateWithClassName(
         'jaitype.ArrayChildrenProvider' ) )
 
-    cat.SetEnabled(True)
+    cat.SetEnabled( True )
